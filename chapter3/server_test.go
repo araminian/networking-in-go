@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -168,4 +169,63 @@ func TestDialContext(t *testing.T) {
 	if ctx.Err() != context.DeadlineExceeded {
 		t.Error("expected deadline exceeded, got", ctx.Err())
 	}
+}
+
+func TestDialContextCancelFanOut(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Server
+	listener, err := net.Listen("tcp4", "localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	go func() {
+		// only accept one connection
+		conn, err := listener.Accept()
+		if err == nil {
+			conn.Close()
+		}
+	}()
+
+	// Clients
+	dial := func(ctx context.Context, address string, response chan int, id int, wg *sync.WaitGroup) {
+		// Decrement the wait group counter when the function returns
+		defer wg.Done()
+
+		var d net.Dialer
+
+		c, err := d.DialContext(ctx, "tcp", address)
+		if err != nil {
+			return
+		}
+		c.Close()
+		select {
+		// If the context is canceled, we don't need to send anything to the response channel
+		case <-ctx.Done():
+		// send a message to the response channel
+		case response <- id:
+		}
+	}
+
+	res := make(chan int)
+	var wg sync.WaitGroup
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go dial(ctx, listener.Addr().String(), res, i, &wg)
+	}
+
+	response := <-res // it's a blocking call , it will wait for a response from the dialer
+	cancel()          // here we cancel the context, which will cancel all the dialers
+	wg.Wait()         // wait for all the dialers to finish
+	close(res)        // close the response channel
+
+	if ctx.Err() != context.Canceled {
+		t.Error("expected canceled context, got", ctx.Err())
+	}
+
+	t.Logf("dialer %d retrieved the resource", response)
 }

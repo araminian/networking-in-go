@@ -41,3 +41,6 @@ A better way to handle timeouts is to use the `context` package. By using `conte
 `context.Err()` returns the error that caused the context to be canceled. `context.DeadlineExceeded` is a constant that is returned when the context is canceled due to a deadline being exceeded. 
 
 `context.WithDeadline` returns a `context.Context` and a `context.CancelFunc`. We can call the `CancelFunc` to cancel the context.
+
+
+We can pass the `context` to multiple dialers, and cancel all the calls at the same time by calling the `CancelFunc`. An example is, we need get a file from multiple servers, so we use multiple dialers to get the file from each server. If one of the dialers gets the file, we can cancel the other dialers. Check `TestDialContextCancelFanOut` for more details.
