@@ -26,3 +26,9 @@ func DialTimeout(network, address string, timeout time.Duration) (net.Conn, erro
 
 	return d.Dial(network, address)
 }
+
+func main() {
+
+	ExamplePinger()
+
+}

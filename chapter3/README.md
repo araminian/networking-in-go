@@ -62,3 +62,17 @@ Check `TestDeadline` for more details.
 
 When you read data from the remote node, you push the deadline forward. The remote node sends more data, and you push the deadline forward again, and so on. If you don’t hear from the remote node in the allotted time, you can assume that either the remote node is gone and you never received its FIN or that it is idle.
 
+
+### Heartbeat
+
+For long-running network connections that may experience extended idle periods at the application level, it’s wise to implement a heartbeat between nodes to advance the deadline.
+
+For our purposes, a heartbeat is a message sent to the remote side with the intention of eliciting a reply, which we can use to advance the deadline of our network connection.
+
+To start, you’ll need a bit of code you can run in a goroutine to ping at regular intervals. You don’t want to needlessly ping the remote node when you recently received data from it, so you need a way to reset the ping timer.
+
+Each side of a network connection could use a Pinger to advance its deadline if the other side becomes idle, and the deadline is reached.
+
+When either node receives data on the network connection, its ping timer should reset to stop the delivery of an unnecessary ping.
+
+Check `TestPingerAdvanceDeadline` for more details.
