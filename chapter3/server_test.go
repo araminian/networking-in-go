@@ -4,6 +4,7 @@ import (
 	"io"
 	"net"
 	"testing"
+	"time"
 )
 
 func TestListener(t *testing.T) {
@@ -108,4 +109,23 @@ func TestDial(t *testing.T) {
 	<-done // Wait to close the connection
 	listener.Close()
 	<-done // Wait to close the listener
+}
+
+// TestDialTimeout tests the DialTimeout function ,
+func TestDialTimeout(t *testing.T) {
+	conn, err := DialTimeout("tcp4", "10.0.0.1:http", 5*time.Second)
+	if err == nil {
+		conn.Close()
+		t.Fatal("connection did not time out")
+	}
+
+	nErr, ok := err.(net.Error)
+	if !ok {
+		t.Fatal(err)
+	}
+
+	if !nErr.Timeout() {
+		t.Fatal("Error is not a timeout, it is a", nErr.Error())
+	}
+
 }
