@@ -1,3 +1,5 @@
 - `receive buffer`: A receive buffer is block of memory that stores incoming data from a network interface card (NIC). It allows the node to accept certain amount of data without requiring an application to read the data immediately. We have per-connection receive buffer. When in our `Go Code` we call `Read` from `net.Conn` interface, it will read data from the receive buffer.
 
 - `window size` : The window size is the maximum amount of data that can be sent without receiving an acknowledgment. It is a measure of the sender's buffer size and the receiver's buffer size. The window size is used to control the flow of data between the sender and receiver. A window size of `0` means the receiver's buffer is full and the sender should wait for an acknowledgment before sending more data. Each server and client has a window size.
+
+- `RST`: informs tha sender that the receiver's side of the connection closed and will not accept any more data. the sender should close the connection. Intermediate nodes like routers and firewalls can send a RST packet to close a connection.
