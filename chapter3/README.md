@@ -44,3 +44,21 @@ A better way to handle timeouts is to use the `context` package. By using `conte
 
 
 We can pass the `context` to multiple dialers, and cancel all the calls at the same time by calling the `CancelFunc`. An example is, we need get a file from multiple servers, so we use multiple dialers to get the file from each server. If one of the dialers gets the file, we can cancel the other dialers. Check `TestDialContextCancelFanOut` for more details.
+
+
+### deadlines for read and write operations
+
+`Go Network Connection` lets us set a deadline for read and write operations.
+
+`Deadline` allows us to control how long network connections can remians idle, where no packets are sent or received.
+
+We can control `read deadline` and `write deadline` using `SetReadDeadline` and `SetWriteDeadline` methods. We can also use `SetDeadline` to set both read and write deadlines.
+
+When a connection reaches its read deadline, all currently blocked and future calls to a network connection’s Read method immediately return a time-out error. Likewise, a network connection’s Write method returns a time-out error when the connection reaches its write deadline.
+
+Go’s network connections don’t set any deadline for reading and writing operations by default, meaning your network connections may remain idle for a long time.
+
+Check `TestDeadline` for more details.
+
+When you read data from the remote node, you push the deadline forward. The remote node sends more data, and you push the deadline forward again, and so on. If you don’t hear from the remote node in the allotted time, you can assume that either the remote node is gone and you never received its FIN or that it is idle.
+
