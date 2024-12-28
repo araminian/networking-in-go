@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"io"
 	"net"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -128,4 +130,42 @@ func TestDialTimeout(t *testing.T) {
 		t.Fatal("Error is not a timeout, it is a", nErr.Error())
 	}
 
+}
+
+func TestDialContext(t *testing.T) {
+	// define a deadline 5 seconds from now
+	dl := time.Now().Add(5 * time.Second)
+
+	// create a context with the deadline
+	ctx, cancel := context.WithDeadline(context.Background(), dl)
+	// cancel the context when the function returns, this will cancel the context and send a cancellation signal to the asynchronous processes
+	defer cancel()
+
+	var d net.Dialer
+
+	// Here we are mocking a timeout
+	d.Control = func(network, address string, c syscall.RawConn) error {
+		// Sleep enough to cause the timeout
+		time.Sleep(5 * time.Second)
+		return nil
+	}
+
+	// DialContext will return a connection or an error
+	conn, err := d.DialContext(ctx, "tcp", "10.0.0.1:http")
+	if err == nil {
+		conn.Close()
+		t.Fatal("connection did not time out")
+	}
+
+	nErr, ok := err.(net.Error)
+	if !ok {
+		t.Error(err)
+	} else {
+		if !nErr.Timeout() {
+			t.Errorf("Error is not a timeout, it is a %v", err)
+		}
+	}
+	if ctx.Err() != context.DeadlineExceeded {
+		t.Error("expected deadline exceeded, got", ctx.Err())
+	}
 }

@@ -9,6 +9,7 @@
 
 ## Code
 
+### Errors
 - `Errors` returned from functions and methods in the `net` package typically implement the `net.Error` interface. Which includes `Temporary() bool` and `Timeout() bool` methods.
 
   - `Timeout() bool` returns true if resource is temporarily unavailable, and call would block, or the connection timed out.
@@ -22,7 +23,8 @@
 
   `net.OpError` is a struct that implements the `net.Error` interface. It contains the `Op` field which is a string that describes the operation that failed, and the `Net` field which is a string that describes the network type.
 
-- the default `Dial` function doesn't have a timeout. It's better to Control the timeout.
+### Timeout
+- the default `Dial` function doesn't have a timeout. It's better to Control the timeout, so we can use `net.DialTimeout` function.
 
   - `net.Dialer` is a struct that implements the `net.Dialer` interface. It contains the `Timeout` field which is a time.Duration that describes the timeout.
   - `Control` is a function that is called with the network, address, and a `syscall.RawConn` interface. It returns an error. The `syscall.RawConn` interface is a wrapper around a `syscall.Conn` struct. The `syscall.Conn` struct is a wrapper around a `net.Conn` struct.
@@ -30,3 +32,12 @@
   - `Control` Use Case:
     - We can read the socket options, or set the socket options.
 
+### Timeout using Context
+
+A better way to handle timeouts is to use the `context` package. By using `context` we can send cancellation signals to the `asynchronous` processes. or we can set a deadline for the operation. We can call `cancel function` even before reaching the `deadline`.
+
+`dialContext` is a function that is similar to `dial` but it takes a `context` as an argument. We can cancel the context to cancel the operation.
+
+`context.Err()` returns the error that caused the context to be canceled. `context.DeadlineExceeded` is a constant that is returned when the context is canceled due to a deadline being exceeded. 
+
+`context.WithDeadline` returns a `context.Context` and a `context.CancelFunc`. We can call the `CancelFunc` to cancel the context.
