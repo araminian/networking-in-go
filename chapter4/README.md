@@ -155,3 +155,11 @@ func (m *Monitor) Write(p []byte) (int, error) {
 ```
 
 check `monitor.go`.
+
+## Pinging a Host in ICMP-Filtered Environments
+
+One of its most common uses is to determine whether a host is online by issuing a ping request and receiving a pong reply from the host.
+
+Unfortunately, many internet hosts filter or block ICMP echo replies. If a host filters pongs, the ping erroneously reports that the remote system is unavailable. One technique you can use instead is to establish a TCP connection with the remote host. If you know that the host listens for incoming TCP connections on a specific port, you can use this knowledge to confirm that the host is available, because you can establish a TCP connection only if the host is up and completes the handshake process.
+
+check `port.go`.
