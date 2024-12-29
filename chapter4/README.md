@@ -128,3 +128,30 @@ Check `proxy.go`.
 The `io.Copy` function returns an error only if a non-`io.EOF` error occurred during the copy, because `io.EOF` means it has read all the data from the reader.
 
 **NOTE**: Since Go version 1.11, if you use `io.Copy` or `io.CopyN` when the source and destination are both `net.TCPConn` objects, the data never enters the user space on Linux, thereby causing the data transfer to occur more efficiently.
+
+### Monitoring a Network Connection
+
+The io package includes useful tools that allow you to do more with network data than just send and receive it using connection objects. For example, you could use `io.MultiWriter` to write a single payload to multiple network connections. You could also use `io.TeeReader` to log data read from a network connection. 
+
+`io.TeeReader` and `io.MultiWriter` expect an `io.Writer`.
+
+`io.TeeReader` returns a new reader that reads from `r` and writes to `w` as well.
+
+`io.MultiWriter` returns a writer that duplicates its writes to all the provided writers.
+
+Although using the `io.TeeReader` and the `io.MultiWriter` in this fashion is powerful, it isn’t without a few caveats. First, both the `io.TeeReader` and the `io.MultiWriter` will block while writing to your writer. Your writer will add latency to the network connection, so be mindful not to block too long. Second, an error returned by your writer will cause the `io.TeeReader` or `io.MultiWriter` to return an error as well, halting the flow of network data.
+
+If you don’t want your use of these objects to potentially interrupt network data flow, I strongly recommend you implement a reader that always returns a nil error and logs its underlying error in a manner that’s actionable.For example, you can modify Monitor’s Write method to always return a
+nil error:
+
+```go
+func (m *Monitor) Write(p []byte) (int, error) {
+	err := m.Output(2, string(p))
+	if err != nil {
+		log.Println(err) // use the log package’s default Logger
+	}
+	return len(p), nil
+}
+```
+
+check `monitor.go`.
