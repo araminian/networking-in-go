@@ -163,3 +163,154 @@ One of its most common uses is to determine whether a host is online by issuing 
 Unfortunately, many internet hosts filter or block ICMP echo replies. If a host filters pongs, the ping erroneously reports that the remote system is unavailable. One technique you can use instead is to establish a TCP connection with the remote host. If you know that the host listens for incoming TCP connections on a specific port, you can use this knowledge to confirm that the host is available, because you can establish a TCP connection only if the host is up and completes the handshake process.
 
 check `port.go`.
+
+## Exploring Go’s TCPConn Object
+
+Accessing the underlying net.TCPConn object allows fine-grained control over the TCP network connection should you need to do such things as modify the read and write buffers, enable keepalive messages, or change the behavior of pending data upon closing the connection. 
+
+```go
+tcpConn, ok := conn.(*net.TCPConn)
+```
+
+On the server side, you can use the AcceptTCP method on a `net.TCPListener` to accept a connection as a `net.TCPConn` object.
+
+```go
+// Retrieving net.TCPConn from the listener
+addr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:")
+if err != nil {
+    return err
+}
+
+listener, err := net.ListenTCP("tcp", addr)
+if err != nil {
+    return err
+}
+tcpConn, err := listener.AcceptTCP()
+```
+
+On the client side, use the `net.DialTCP` function:
+
+```go
+addr, err := net.ResolveTCPAddr("tcp", "www.google.com:http")
+if err != nil {
+    return err
+}
+tcpConn, err := net.DialTCP("tcp", nil, addr)
+```
+
+Some of these methods may not be available on your target operating system or may have hard limits imposed by the operating system. My advice is to use the following methods only when necessary. Altering these settings on the connection object from the operating system defaults may lead to network behavior that’s difficult to debug. 
+
+### Controlling Keepalive Messages
+
+A keepalive is a message sent over a network connection to check the connection’s integrity by prompting an acknowledgment of the message from the receiver. After an operating system–specified number of unacknowledged keepalive messages, the operating system will close the connection.
+
+The operating system configuration dictates whether a connection uses keepalives for TCP sessions by default. If you need to enable keepalives on a `net.TCPConn` object, pass true to its `SetKeepAlive` method:
+
+```go
+tcpConn.SetKeepAlive(true)
+```
+
+You also have control over how often the connection sends keepalive messages using the `SetKeepAlivePeriod` method. This method accepts a `time.Duration` that dictates the keepalive message interval:
+
+```go
+tcpConn.SetKeepAlivePeriod(3 * time.Minute)
+```
+
+**NOTE**:Using deadlines advanced by a heartbeat is usually the better method
+for detecting network problems. As mentioned earlier in this chapter, deadlines provide better cross-platform support, traverse firewalls better, and make sure your application is actively managing the network connection.
+
+### Handling Pending Data on Close
+
+By default, if you’ve written data to `net.Conn` but the data has yet to be sent to or acknowledged by the receiver and you close the network connection, our operating system will complete the delivery in the background. If you don’t want this behavior, the `net.TCPConn` object’s `SetLinger` method allows you to tweak it:
+
+```go
+err := tcpConn.SetLinger(-1) // anything < 0 uses the default behavior
+```
+
+The `SetLinger` method accepts a `time.Duration` that dictates how long the operating system will wait for the data to be sent or acknowledged by the receiver. If you pass 0, the operating system will discard any pending data and close the connection immediately. If you pass a positive duration, the operating system will wait for the duration to elapse before closing the connection.
+
+If you wish to abruptly discard all unsent data and ignore acknowledgments of sent data upon closing the network connection, set the connection’s linger to zero:
+
+```go
+err := tcpConn.SetLinger(0) // immediately discard unsent data on close
+```
+
+Setting linger to zero will cause your connection to send an RST packet when your code calls your connection’s Close method, aborting the connection and bypassing the normal teardown procedures.
+
+
+If you’re looking for a happy medium and your operating system supports it, you can pass a positive integer n to SetLinger. Your operating system will attempt to complete delivery of all outstanding data up to n seconds, after which point your operating system will discard any unsent or unacknowledged data.
+
+```go
+err := tcpConn.SetLinger(10) // attempt to deliver data up to 10 seconds
+```
+
+### Overriding Default Receive and Send Buffers
+
+Your operating system assigns read and write buffers to each network connection you create in your code. For most cases, those values should be enough. But in the event you want greater control over the read or write buffer sizes, you can tweak their value.
+
+```go
+if err := tcpConn.SetReadBuffer(212992); err != nil {
+  return err
+}
+if err := tcpConn.SetWriteBuffer(212992); err != nil {
+  return err
+}
+```
+
+The `SetReadBuffer` method accepts an integer representing the connection’s read buffer size in bytes. Likewise, the `SetWriteBuffer` method accepts an integer and sets the write buffer size in bytes on the connection. Keep in mind that you can’t exceed your operating system’s maximum value for either buffer size.
+
+
+## Solving Common Go TCP Network Problems
+
+### Zero Window Errors
+
+TCP’s sliding window and how the window size tells the sender how much data the receiver can accept before the next acknowledgment.
+A common workflow when reading from a network connection is to read some data from the connection, handle the data, read more data from the connection, handle it, and so on.
+
+But what happens if you don’t read data from a network connection quickly enough? Eventually, the sender may fill the receiver’s receive buffer, resulting in a zero-window state. The receiver will not be able to receive data until the application reads data from the buffer. This most often happens when the handling of data read from a network connection blocks and the code never makes its way around to reading from the socket again,
+
+```go
+buf := make([]byte, 1024)
+for {
+    n, err := conn.Read(buf)
+    if err != nil {
+        return err
+    }
+    handle(buf[:n]) // BLOCKS!
+}
+```
+
+Reading data from the network connection frees up receive buffer space. If the code blocks for an appreciable amount of time while handling the received data, the receive buffer may fill up. A full receive buffer isn’t necessarily bad. Zeroing the window is a way to throttle, or slow, the flow of data from the sender by creating backpressure on the sender. But if it’s unintended or prolonged, a zero window may indicate a bug in your code.
+
+### Sockets Stuck in the CLOSE_WAIT State
+
+Server side of a TCP network connection will enter the CLOSE_WAIT state after it receives and acknowledges the FIN packet from the client. If you see TCP sockets on your server that persist in the CLOSE_WAIT state, it’s likely your code is neglecting to properly call the Close method on its network connections.
+
+```go
+for {
+		conn, err := listener.Accept()
+		if err != nil {
+			return err
+		}
+		go func(c net.Conn) { // 1 we never call c.Close() before returning!
+			buf := make([]byte, 1024)
+			for {
+				n, err := c.Read(buf)
+				if err != nil {
+					return // 2
+				}
+				handle(buf[:n])
+			}
+		}(conn)
+	}
+```
+
+
+The listener handles each connection in its own goroutine. However,the goroutine fails to call the connection’s Close method before fully returning from the goroutine. Even a temporary error will cause the goroutine to return. And because you never close the connection, this will leave the TCP socket in the CLOSE_WAIT state. If the server attempted to send anything other than a FIN packet to the client, the client would respond with an RST packet, abruptly tearing down the connection. The solution is to make sure to defer a call to the connection’s Close method soon after creating the goroutine.
+
+```go
+func (s *Server) handle(c net.Conn) {
+	defer c.Close()
+	// ...
+}
+```
