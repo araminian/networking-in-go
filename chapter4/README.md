@@ -73,3 +73,43 @@ func Read(r io.Reader, order binary.ByteOrder, data any) error
 The `order` parameter is either `binary.BigEndian` or `binary.LittleEndian`, and the `data` parameter is the value to be read.
 
 check the `tlv.go` and `TestPayloads` in the `read_test.go` file for an example.
+
+
+## Handling Errors While Reading and Writing Data
+
+Unlike writing to file objects, writing to network connections can be unreliable, especially if your network connection is spotty.
+
+Not all errors returned when reading from or writing to a network connection are permanent. The connection can recover from some errors. For example, writing data to a network connection where adverse network conditions delay the receiver’s ACK packets, and where your connection times out while waiting to receive them, can result in a temporary error.
+
+how to check for temporary errors while writing data to a network connection.
+
+
+Since you might receive a transient error when writing to a network connection, you might need to retry a write operation. 
+
+If the `net.Error’s Temporary` method returns true, the code makes another write attempt by iterating around the for loop. If the error is permanent, the code returns the error.
+
+```go
+var (
+		err error
+		n   int
+		i   = 7 // maximum number of retries
+	)
+
+	for ; i > 0; i-- {
+		n, err = conn.Write([]byte("hello world"))
+		if err != nil {
+			if nErr, ok := err.(net.Error); ok && nErr.Temporary() {
+				log.Println("temporary error:", nErr)
+				time.Sleep(10 * time.Second)
+				continue
+			}
+			return err
+		}
+		break
+	}
+	if i == 0 {
+		return errors.New("temporary write failure threshold exceeded")
+	}
+	log.Printf("wrote %d bytes to %s\n", n, conn.RemoteAddr())
+
+```
