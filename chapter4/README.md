@@ -113,3 +113,18 @@ var (
 	log.Printf("wrote %d bytes to %s\n", n, conn.RemoteAddr())
 
 ```
+
+## Creating Robust Network Applications by Using the io.Package
+
+We learn how to use the `io.Copy`, `io.MultiWriter`, and `io.TeeReader` functions to proxy data between connections, log network traffic, and ping hosts when firewalls attempt to keep you from doing so.
+
+### Proxy
+One of the most useful functions from the io package, the `io.Copy` function reads data from an `io.Reader` and writes it to an `io.Writer`. This is useful for creating a proxy, which, in this context, is an intermediary that transfers data between two nodes. 
+
+Check `proxy.go`.
+
+`io.Copy` It writes, to the writer, everything it reads from the reader until the reader returns an `io.EOF`, or, alternately, either the reader or writer `returns an error`. 
+
+The `io.Copy` function returns an error only if a non-`io.EOF` error occurred during the copy, because `io.EOF` means it has read all the data from the reader.
+
+**NOTE**: Since Go version 1.11, if you use `io.Copy` or `io.CopyN` when the source and destination are both `net.TCPConn` objects, the data never enters the user space on Linux, thereby causing the data transfer to occur more efficiently.
