@@ -70,3 +70,27 @@ The client side of a connection can leverage the stream-oriented functionality o
 Unlike TCP, the echo server receives no traffic upon calling `net.Dial` because no handshake is necessary.
 
 For your purposes, using net.Conn over net.PacketConn may make your UDP connection code cleaner. Just be aware of the trade-offs. Using net.Conn with UDP does not offer the same functionality as you would expect when using net.Conn with TCP. For example, a UDP-based net.Conn’s Write method will not return an error if the destination failed to receive the packet. The onus is still on your application code to confirm delivery when using UDP.
+
+## Avoiding Fragmentation
+
+Fragmentation is a Layer 3 IP process of splitting a packet into smaller pieces suitable for efficient transmission over a network. All network media have packet size limitations known as the maximum transmission unit (MTU). Packets larger than the medium’s maximum transmission unit require fragmentation so that each fragment is less than or equal to the medium’s MTU before nodes pass them over the medium. Once the fragments reach their destination, the operating system reassembles each packet and presents the packet to your application.
+
+But fragments can corrupt or fail to reach their destination for one reason or another. This is a significant consideration if you’re using UDP because, unlike TCP, UDP does not gracefully recover from missing or corrupt data. If an operating system fails to receive even a single fragment, the sender must retransmit the entire UDP packet. As you can imagine, retransmitting large packets is woefully inefficient.
+
+We’ll focus on a straightforward way to identify the MTU between your computer and a destination node, and then use those results to inform your choice of payload size to avoid fragmentation.
+
+
+You can use the `ping` command to determine the MTU between your computer and a destination node. The `ping` command allows you to send an ICMP packet of a specific size with a flag set to inform nodes not to fragment it. If the packet reaches a node that needs to fragment the packet because of its size, the node will see the do not fragment flag and respond with an ICMP message informing you that the packet is too large.
+
+The following example sends these pings over Ethernet, which has a minimum MTU of 46 bytes and a maximum MTU of 1,500 bytes, per its specification. If any hop between your computer and its destination has an MTU of less than 1,500 bytes, your packet will fragment.
+
+```bash
+ping -M do -s 1500 1.1.1.1
+PING 1.1.1.1 (1.1.1.1) 1500(1528) bytes of data.
+ping: sendmsg: Message too long
+```
+
+The `-M do` flag sets the do not fragment flag. The `-s 1500` flag sets the packet size. The `1.1.1.1` flag sets the destination node.
+
+The `ping` command returns an error message because the packet is too large.
+
