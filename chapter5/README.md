@@ -54,3 +54,19 @@ The `net.PacketConn` interface has a `WriteTo` method that writes a UDP packet t
 the listener’s side of the connection so that the listener can then send a message to the client.
 
 There is no UDP equivalent of the `TCPListener` because UDP lacks sessions. You need to verify the sender’s address, because you can no longer trust that all incoming packets to a connection object are from the same sender.
+
+## Using net.Conn in UDP
+
+You can establish a UDP connection that implements the `net.Conn` interface so that your code behaves indistinguishably from a TCP `net.Conn`.
+
+You do so by passing `udp` as the first argument to the `net.Dial` function.
+
+Using `net.Conn` with your UDP-based connections can **prevent interlopers from sending you messages** and **eliminate the need to check the sender’s address on every reply you receive**.
+
+check out the `echo_test.go` file for the full implementation.
+
+The client side of a connection can leverage the stream-oriented functionality of `net.Conn` over UDP, but the UDP listener must still use `net.PacketConn`.
+
+Unlike TCP, the echo server receives no traffic upon calling `net.Dial` because no handshake is necessary.
+
+For your purposes, using net.Conn over net.PacketConn may make your UDP connection code cleaner. Just be aware of the trade-offs. Using net.Conn with UDP does not offer the same functionality as you would expect when using net.Conn with TCP. For example, a UDP-based net.Conn’s Write method will not return an error if the destination failed to receive the packet. The onus is still on your application code to confirm delivery when using UDP.

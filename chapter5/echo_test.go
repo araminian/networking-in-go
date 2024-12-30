@@ -5,6 +5,7 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 )
 
 func TestEchoServerUDP(t *testing.T) {
@@ -136,4 +137,92 @@ func TestListenPacketUDP(t *testing.T) {
 	}
 
 	t.Logf("replied to %s: %s", addr, string(buf[:n]))
+}
+
+/*
+creates the UDP-based net.Conn and demonstrates how net.Conn
+encapsulates the implementation details of UDP to emulate a stream-oriented
+network connection.
+*/
+func TestDialUDP(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	serverAddr, err := echoServerUDP(ctx, "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("binding to udp %s: %v", serverAddr, err)
+	}
+
+	defer cancel()
+
+	// create a new UDP connection
+	client, err := net.Dial("udp", serverAddr.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = client.Close()
+	}()
+
+	/*
+		interrupts the client by sending a message to it before the
+		echo server sends its reply.
+	*/
+
+	interloper, err := net.ListenPacket("udp", "127.0.0.1:")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	interrupt := []byte("pardon me")
+
+	n, err := interloper.WriteTo(interrupt, client.LocalAddr())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = interloper.Close()
+	if l := len(interrupt); l != n {
+		t.Fatalf("wrote %d bytes of %d", n, l)
+	}
+
+	/*
+		details the difference between a UDP connection using
+		net.Conn and one using net.PacketConn,
+	*/
+
+	ping := []byte("ping")
+	_, err = client.Write(ping)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	/*
+		The client reads packets only from
+		the sender address specified in the net.Dial call, as you would expect using a
+		stream-oriented connection object. The client never reads the message sent
+		by the interloping connection.
+	*/
+	buf := make([]byte, 1024)
+	n, err = client.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(buf[:n], ping) {
+		t.Errorf("expected %s, got %s", ping, buf[:n])
+	}
+
+	/*
+		To make sure, you set an ample deadline
+		and attempt to read another message from the client.
+	*/
+	err = client.SetDeadline(time.Now().Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Read(buf)
+	if err == nil {
+		t.Fatal("unexpected packet")
+	}
+
 }
