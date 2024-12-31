@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net"
+	"os"
 )
 
 // generic stream-based echo server
@@ -65,4 +66,38 @@ func streamingEchoServer(ctx context.Context, network string, address string) (n
 	}()
 
 	return s.Addr(), nil
+}
+
+func datagramEchoServer(ctx context.Context, network string, addr string) (net.Addr, error) {
+	s, err := net.ListenPacket(network, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	// server
+	go func() {
+		go func() {
+			<-ctx.Done()
+			s.Close()
+			if network == "unixgram" {
+				os.Remove(addr)
+			}
+		}()
+
+		buf := make([]byte, 1024)
+		for {
+			n, clientAdd, err := s.ReadFrom(buf)
+			if err != nil {
+				return
+			}
+
+			_, err = s.WriteTo(buf[:n], clientAdd)
+			if err != nil {
+				return
+			}
+		}
+
+	}()
+
+	return s.LocalAddr(), nil
 }
