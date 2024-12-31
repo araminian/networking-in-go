@@ -260,12 +260,12 @@ func (a *Ack) UnmarshalBinary(p []byte) error {
 
 // Error
 
-type Error struct {
+type Err struct {
 	Error   ErrorCode
 	Message string
 }
 
-func (e Error) MarshalBinary() ([]byte, error) {
+func (e Err) MarshalBinary() ([]byte, error) {
 
 	// operation code + error code + message + 0 byte
 	cap := 2 + 2 + len(e.Message) + 1
@@ -292,7 +292,7 @@ func (e Error) MarshalBinary() ([]byte, error) {
 
 }
 
-func (e *Error) UnmarshalBinary(p []byte) error {
+func (e *Err) UnmarshalBinary(p []byte) error {
 	r := bytes.NewBuffer(p)
 	var code OpCode
 

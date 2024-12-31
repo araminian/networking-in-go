@@ -80,3 +80,19 @@ Error packet structure:
 - 2 bytes: error code
 - n bytes: error message
 - 1 byte: 0 (null terminator)
+
+## TFTP Server
+
+check `server.go`.
+
+The fact that your packet types implement the `encoding.BinaryMarshaler` and `encoding.BinaryUnmarshaler` interfaces means that your server code can act as a conduit between the network interface and these types, leading to simpler code. All your server must concern itself with is transferring byte slices between your types and the network connection.
+
+
+### Handle Read Request
+
+The handler accepts read requests from the client and replies with the `server’s payload`.
+
+The handler sends one data packet and waits for an acknowledgment from the client before sending another data packet. It also attempts to retransmit the current data packet when it fails to receive a timely reply from the client.
+
+
+
