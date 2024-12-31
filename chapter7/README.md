@@ -84,3 +84,23 @@ check `TestEchoServerUnixPacket`.
 
 You can see the distinction between the unix and unixpacket socket types by writing three ping messages to the server before reading the first reply. Whereas a unix socket type would return all three ping messages with a single read, unixpacket acts just like other datagram-based network types and returns one message for each read operation.
 
+## Writing a Service That Authenticates Clients
+
+On Linux systems, Unix domain sockets allow you to glean details about the process on the other end of a socket—your peer—by receiving the credentials from your peer’s operating system.
+
+You can use this information to authenticate your peer on the other side of the Unix domain socket and deny access if the peer’s credentials don’t meet your criteria. 
+
+For instance, if the user `davefromaccounting` connects to your administrative service through a Unix domain socket, the peer credentials might indicate that you should deny access; Dave should be crunching numbers, not sending bits to your administrative service.
+
+You can create a service that allows connections only from specific users or any user in a specific group found in the `/etc/groups` file.
+
+When a client connects to your Unix domain socket, you can request the peer credentials and compare the client’s group ID in the peer credentials to the group ID of any allowed groups. If the client’s group ID matches one of the allowed group IDs, you can consider the client authenticated. 
+
+### Requesting Peer Credentials
+
+The process of requesting peer credentials isn’t exactly straightforward. You cannot simply request the peer credentials from the `connection object` itself. Rather, you need to use the `golang.org/x/sys/unix` package to request peer credentials from the operating system, which you can retrieve using the following command:
+
+```bash
+go get -u golang.org/x/sys/unix
+```
+check `auth.go`.
