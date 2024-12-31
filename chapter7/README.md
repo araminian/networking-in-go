@@ -70,3 +70,17 @@ Whether you’re communicating over UDP or a unixgram socket, the server you’l
 
 
 check `TestEchoServerUnixDatagram`.
+
+### The unixpacket Sequence Packet Socket
+
+The sequence packet socket type is a hybrid that combines the session-oriented connections and reliability of TCP with the clearly delineated datagrams of UDP. However, sequence packet sockets discard unrequested data in each datagram. If you read 32 bytes of a 50-byte datagram, for example, the operating system discards the 18 unrequested bytes.
+
+
+Of the three Unix domain socket types, `unixpacket` enjoys the least crossplatform support. Coupled with unixpacket’s hybrid behavior and discarding of unrequested data, unix or unixgram are better suited for most applications.
+
+NOTE: Windows, WSL, and macOS do not support unixpacket domain sockets.
+
+check `TestEchoServerUnixPacket`.
+
+You can see the distinction between the unix and unixpacket socket types by writing three ping messages to the server before reading the first reply. Whereas a unix socket type would return all three ping messages with a single read, unixpacket acts just like other datagram-based network types and returns one message for each read operation.
+
