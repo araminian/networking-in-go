@@ -233,3 +233,14 @@ Before you can send data to a test server, you need to create a handler that can
 `server_test.go` : creates a new type named `User` that you will encode to JavaScript Object Notation (JSON) and post to the handler.
 
 
+### Posting a Multipart Form with Attached Files
+
+how do you handle sending various bits of data to a web server in a single POST request?
+Answer: use the mime/multipart package.
+
+The `mime/multipart` package allows you to craft multipart Multipurpose Internet Mail Extensions (MIME) messages, which separate each bit of data you want to send from the other bits of data by a string known as a `boundary`.
+
+Each MIME part includes optional headers that describe the content, as well as a body that contains the content itself. For example, if a web server parsed a MIME part with a `Content-Type` header set to `text/plain`, it would treat the part’s body as plaintext.
+
+check `test_multipart.go`
+
