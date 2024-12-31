@@ -8,7 +8,7 @@ import (
 
 var (
 	address = flag.String("a", "127.0.0.1:69", "listen address")
-	payload = flag.String("p", "payload.svg", "file to serve to clients")
+	payload = flag.String("p", "P.jpeg", "file to serve to clients")
 )
 
 func main() {
