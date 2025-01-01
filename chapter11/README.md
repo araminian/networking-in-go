@@ -76,4 +76,16 @@ This command creates a certificate named cert.pem with the hostname localhost an
 
 check out `server.go` which includes the first bit of code for a TLS-only echo server.
 
+### Certificate Pinning
 
+Earlier in the chapter, we discussed ways to compromise the trust that TLS relies on, whether by a certificate authority issuing fraudulent certificates or an attacker injecting a malicious certificate into your computer’s trusted certificate storage. You can mitigate both attacks by using certificate pinning.
+
+Certificate pinning is the process of scrapping the use of the operating system’s trusted certificate storage and explicitly defining one or more trusted certificates in your application. Your application will trust connections only from hosts presenting a pinned certificate or a certificate signed by a pinned certificate.
+
+If you plan on deploying clients in zero-trust environments that must securely communicate with your server, consider pinning your server’s certificate to each client.
+
+Assuming the server introduced in the preceding section uses the cert.pem and the key.pem you generated for the hostname localhost, all clients will abort the TLS connection as soon as the server presents its certificate. Clients won’t trust the server’s certificate because no trusted certificate authority signed it. You could set the tls.Config’s InsecureSkipVerify field to true, but as this method is insecure, I don’t recommend you consider it a practical choice.
+
+Instead, let’s explicitly tell our client it can trust the server’s certificate by pinning the server’s certificate to the client.
+
+check `TestEchoServerTLS` in `server_test.go`.
