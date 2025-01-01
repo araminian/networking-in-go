@@ -221,3 +221,34 @@ h := &Handlers{
 http.Handle("/one", h.Handler1())
 http.Handle("/two", h.Handler2())
 ```
+
+## Middleware
+
+Middleware comprises reusable functions that accept an `http.Handler` and return an `http.Handler`.
+
+You can use middleware to inspect the request and make decisions based on its content before passing it along to the next handler. Or you might use the request content to set headers in the response.
+
+For example, the middleware could respond to the client with an error if the handler
+requires authentication and an unauthenticated client sent the request.
+
+Middleware can also collect metrics, log requests, or control access to resources, to name a few uses.
+
+Best of all, you can reuse them on multiple handlers. If you find yourself writing the same handler code over and over, ask yourself if you can put the functionality into middleware and reuse it across your handlers.
+
+check `middleware.go` for more details.
+
+I don’t recommend performing so many tasks in a single middleware function. Instead, it’s best to follow the Unix philosophy and write minimalist middleware, with each function doing one thing very well.
+
+The `net/http` package includes useful middleware to serve static files, redirect requests, and manage request time-outs. Let’s dig into their source code to see how you might use them.
+
+
+### Timing Out Slow Clients
+
+It’s important not to let clients dictate the duration of a request-response life cycle. Malicious clients could use this leniency to their ends and exhaust your server’s resources, effectively denying service to legit clients. Yet at the same time, setting read and write time-outs server-wide makes it hard for the server to stream data or use different time-out durations for each handler.
+
+Instead, you should manage time-outs in middleware or individual handlers. The `net/http` package includes a middleware function that allows you to control the duration of a request and response on a per-handler basis.
+
+The `http.TimeoutHandler` accepts an `http.Handler`, a duration, and a string to write to the response body. It sets an internal timer to the given duration. If the `http.Handler` does not return before the timer expires, the `http.TimeoutHandler` blocks the `http.Handler` and responds to the client with a `503 Service Unavailable` status.
+
+check `TestTimeoutMiddleware` for more details.
+
