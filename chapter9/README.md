@@ -264,3 +264,17 @@ By convention, many operating systems store configuration files or other sensiti
 Check `RestrictPrefix` in `middleware.go` for more details.
 
 A better approach to restricting access to resources would be to block all resources by default and explicitly allow select resources.
+
+## Multiplexers
+
+A `multiplexer`, like the friendly librarian routing me to the proper bookshelf, is a general handler that routes a request to a specific handler.
+
+The `http.ServeMux` multiplexer is an `http.Handler` that routes an incoming request to the proper handler for the requested resource. By default, `http.ServeMux` responds with a `404 Not Found` status for all incoming requests, but you can use it to register your own patterns and corresponding handlers. It will then compare the request’s URL path with its registered patterns, passing the request and response writer to the handler that corresponds to the longest matching pattern.
+
+check `mux_test.go` for more details.
+
+Go’s multiplexer treats absolute paths as exact matches: either the request’s URL path matches, or it doesn’t. By contrast, it treats subtrees as prefix matches. In other words, the multiplexer will look for the longest registered pattern that comes at the beginning of the request’s URL path. For example, /hello/there/ is a prefix of /hello/there/you but not of /hello/you.
+
+Go’s multiplexer can also redirect a URL path that doesn’t end in a forward slash, such as /hello/there. In those cases, the http.ServeMux first attempts to find a matching absolute path. If that fails, the multiplexer appends a forward slash, making the path /hello/there/, for example, and responds to the client with it. This new path becomes a permanent redirect.
+
+
