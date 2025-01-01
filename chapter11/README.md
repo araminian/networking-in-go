@@ -56,4 +56,24 @@ The client’s primary concern during the handshake `process is to authenticate 
 
 check out `TestClientTLS` in `client_test.go`.
 
+### TLS over TCP
+
+TLS is stateful; a client and a server negotiate session parameters during the initial handshake only, and once they’ve agreed, they exchange encrypted TLS records for the duration of the session. Since TCP is also stateful, it’s the ideal transport layer protocol with which to implement TLS, because you can leverage TCP’s reliability guarantees to maintain your TLS sessions.
+
+check out `TestClientTLSGoogle` in `client_test.go`.
+
+It demonstrates how to use the `crypto/tls` package to initiate a TLS connection with a few lines of code.
+
+### Server-side TLS
+
+The server-side code isn’t much different from what you’ve learned thus far. The main difference is that the server needs to present a certificate to the client as part of the handshake process. 
+
+```bash
+go run $(go env GOROOT)/src/crypto/tls/generate_cert.go -host localhost -ecdsa-curve P256
+```
+
+This command creates a certificate named cert.pem with the hostname localhost and a private key named key.pem.
+
+check out `server.go` which includes the first bit of code for a TLS-only echo server.
+
 

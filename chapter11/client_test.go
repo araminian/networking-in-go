@@ -2,10 +2,12 @@ package main
 
 import (
 	"crypto/tls"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/net/http2"
 )
@@ -105,4 +107,35 @@ func TestClientTLS(t *testing.T) {
 		t.Errorf("expected status %d; actual status %d",
 			http.StatusOK, resp.StatusCode)
 	}
+}
+
+func TestClientTLSGoogle(t *testing.T) {
+
+	/*
+		You use the `tls.DialWithDialer` function to initiate a TLS connection with
+		Google’s server. This function returns a `net.Conn` object that you can use
+		to retrieve the TLS connection’s state.
+	*/
+	conn, err := tls.DialWithDialer(
+		&net.Dialer{Timeout: 30 * time.Second},
+		"tcp",
+		"www.google.com:443",
+		&tls.Config{
+			CurvePreferences: []tls.CurveID{tls.CurveP256},
+			MinVersion:       tls.VersionTLS12,
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	/*
+		The underlying TLS client used the operating system’s
+		trusted certificate storage
+	*/
+	state := conn.ConnectionState()
+	t.Logf("TLS 1.%d", state.Version-tls.VersionTLS10)
+	t.Log(tls.CipherSuiteName(state.CipherSuite))
+	t.Log(state.VerifiedChains[0][0].Issuer.Organization[0])
+	_ = conn.Close()
 }
