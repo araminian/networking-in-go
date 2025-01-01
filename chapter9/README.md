@@ -300,3 +300,12 @@ browser may use the pushed resources when rendering the /2 route.
 
 Go doesn’t include the support needed to test the server’s push functionality with code,
 but you can interact with this program by using your web browser.
+
+
+### Don’t Be Too Pushy
+
+Although HTTP/2 server pushing can improve the efficiency of your communications, it can do just the opposite if you aren’t careful. Remember that web browsers store pushed resources in a separate cache for the lifetime of the connection. If you’re serving resources that don’t change often, the web browser will likely already have them in its regular cache, so you shouldn’t push them.
+
+Once it caches them, the browser can use them for future requests spanning many connections. You probably shouldn’t push the resources like (index2.html, style.css, and image.png), for instance, because they’re unlikely to change often.
+
+My advice is to be conservative with server pushes. Use your handlers and rely on metrics to figure out when you should push a resource. If you do push resources, do so before writing the response.
