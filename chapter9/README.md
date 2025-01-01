@@ -277,4 +277,26 @@ Go’s multiplexer treats absolute paths as exact matches: either the request’
 
 Go’s multiplexer can also redirect a URL path that doesn’t end in a forward slash, such as /hello/there. In those cases, the http.ServeMux first attempts to find a matching absolute path. If that fails, the multiplexer appends a forward slash, making the path /hello/there/, for example, and responds to the client with it. This new path becomes a permanent redirect.
 
+## HTTP/2 Server Pushes
 
+The Go HTTP server can push resources to clients over HTTP/2, a feature that has the potential to improve efficiency.
+
+For example, a client may request the home page from a web server, but the client won’t know it needs the associated style sheet and images to properly render the home page until it receives the HTML in the response.
+
+An HTTP/2 server can proactively send the style sheet and images along with the HTML in the response, saving the client from having to make subsequent calls for those resources.
+
+But server pushes have the potential for abuse.
+
+### Pushing Resources to the Client
+
+Let’s write a command line executable that can push resources to clients.
+
+check `push.go` for more details.
+
+Web browsers cache HTTP/2-pushed resources for the life of the connection and make it available across routes. Therefore, if the index2.html
+file served by the /2 route references the same resources pushed by the
+default route, and the client first visits the default route, the client’s web
+browser may use the pushed resources when rendering the /2 route.
+
+Go doesn’t include the support needed to test the server’s push functionality with code,
+but you can interact with this program by using your web browser.
