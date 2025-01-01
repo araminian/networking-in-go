@@ -1,0 +1,39 @@
+[[apps.http.servers.test_server.routes]]
+// Caddy includes matcher modules that allow you to consider each part of a request.
+[[apps.http.servers.test_server.routes.match]]
+// For this route, you add a single matcher that matches any request for the
+// absolute path /backend or any path starting with /backend/
+path = [
+    '/backend',
+    '/backend/*',
+]
+
+// Here, you tell Caddy you want to send all matching requests to the reverse-proxy handler. 
+[[apps.http.servers.test_server.routes.handle]]
+    handler = 'reverse_proxy'
+// The reverseproxy handler needs to know where to send the requests. You specify an
+// upstream entry with its dial property set to the backend server’s socket
+// address
+[[apps.http.servers.test_server.routes.handle.upstreams]]
+    dial = 'localhost:8080'
+
+// This route does not
+// include any matchers. As such, Caddy would send every request to this
+// route’s handler if the request didn’t match previous routes.
+// In other words, this route is your default route, and so its position in the file matters.
+[[apps.http.servers.test_server.routes]]
+
+//As with the file server in the preceding chapter, you want to protect
+//against accidentally serving sensitive files prefixed with a period. Therefore,
+//you include your restrict_prefix middleware in the array of handlers
+//before the file_server handler. 
+
+[[apps.http.servers.test_server.routes.handle]]
+    handler = 'restrict_prefix'
+    prefix = '.'
+[[apps.http.servers.test_server.routes.handle]]
+    handler = 'file_server'
+    root = './files'
+    index_names = [
+    'index.html',
+]
