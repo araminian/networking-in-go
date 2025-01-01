@@ -252,3 +252,15 @@ The `http.TimeoutHandler` accepts an `http.Handler`, a duration, and a string to
 
 check `TestTimeoutMiddleware` for more details.
 
+### Protecting Sensitive Files
+
+Middleware can also keep clients from accessing information you’d like to
+keep private. For example, the `http.FileServer` function simplifies the process of serving static files to clients, accepting an `http.FileSystem` interface, and returning an `http.Handler`.
+
+The problem is, it won’t protect against serving up potentially sensitive files. Any file in the target directory is fair game.
+
+By convention, many operating systems store configuration files or other sensitive information in files and directories prefixed with a period and hide these dot-prefixed files and directories by default. (This is particularly true in Unix-compatible systems.) But the `http.FileServer` will gladly serve dot-prefixed files or traverse dot-prefixed directories.
+
+Check `RestrictPrefix` in `middleware.go` for more details.
+
+A better approach to restricting access to resources would be to block all resources by default and explicitly allow select resources.
