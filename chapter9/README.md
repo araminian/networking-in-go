@@ -156,3 +156,68 @@ Because http.Handler is an interface, you can use it to write powerful construct
 
 Let’s improve upon the `default handler`. check `DefaultMethodsHandler` for more details.
 
+### Injecting Dependencies into Handlers
+
+The `http.Handler` interface gives you access to the request and response objects.
+But it’s likely you’ll require access to additional functionality like a logger,
+metrics, cache, or database to handle a request.
+
+For example, you may want to inject a logger to record request errors or inject a database object to retrieve data used to create the response. The easiest way to inject an object into a handler is by using a closure.
+
+
+Following demonstrates how to inject a `SQL database object` into an `http.Handler`.
+
+```go
+dbHandler := func(db *sql.DB) http.Handler {
+    return http.HandlerFunc(
+        func(w http.ResponseWriter, r *http.Request) {
+            err := db.Ping()
+            // do something with the database here…
+            },
+        )
+        }
+http.Handle("/three", dbHandler(db))
+```
+
+You create a function that accepts a pointer to a SQL database object and returns a handler, then assign it to a variable named dbHandler. Since `dbHandler` is a function, you can call it with the `db` object to create a handler.
+
+This approach can get a bit cumbersome if you have multiple handlers that require access to the same database object or your design is evolving and you’re likely to require access to additional objects in the future.
+
+A more extensible approach is to use a `struct` whose fields represent objects
+and data you want to access in your handler and to define your handlers
+as `struct` methods. Injecting dependencies involves adding
+struct fields instead of modifying a bunch of closure definitions.
+
+```go
+
+type Handlers struct {
+	db  *sql.DB
+	log *log.Logger
+}
+
+func (h *Handlers) Handler1() http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			err := h.db.Ping()
+			if err != nil {
+				h.log.Printf("db ping: %v", err)
+			}
+			// do something with the database here
+		},
+	)
+}
+func (h *Handlers) Handler2() http.Handler {
+	return http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			// ...
+		},
+	)
+}
+
+h := &Handlers{
+    db: db,
+    log: log.New(os.Stderr, "handlers: ", log.Lshortfile),
+}
+http.Handle("/one", h.Handler1())
+http.Handle("/two", h.Handler2())
+```
