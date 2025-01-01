@@ -89,3 +89,59 @@ Assuming the server introduced in the preceding section uses the cert.pem and th
 Instead, let’s explicitly tell our client it can trust the server’s certificate by pinning the server’s certificate to the client.
 
 check `TestEchoServerTLS` in `server_test.go`.
+
+## Mutual TLS Authentication
+
+In the preceding section, you learned how clients authenticate servers by using the server’s certificate and a trusted third-party certificate or by configuring the client to explicitly trust the server’s certificate. 
+
+Servers can authenticate clients in the same manner. This is particularly useful in zerotrust network infrastructures, where clients and servers must each prove their identities.
+
+For example, you may have a client outside your network that must present a certificate to a proxy before the proxy will allow the client to access your trusted network resources. Likewise, the client authenticates the certificate presented by your proxy to make sure it’s talking to your proxy and not one controlled by a malicious actor.
+
+You can instruct your server to set up TLS sessions with only authenticated clients. Those clients would have to present a certificate signed by a trusted certificate authority or pinned to the server.
+
+clients cannot use the certificates generated with `$GOROOT/src/crypto/tls/generate_cert.go` for client authentication. Instead, you need to create your own certificate and private key.
+
+### Generating Certificates for Authentication
+
+Go’s standard library contains everything you need to generate your own certificates using the elliptic curve digital signature algorithm (ECDSA) and the P-256 elliptic curve.
+
+check out `cert.go`.
+```bash
+go run cert.go -cert serverCert.pem -key serverKey.pem -host localhost
+go run cert.go -cert clientCert.pem -key clientKey.pem -host localhost
+```
+### Implementing Mutual TLS
+
+Now that you’ve generated certificate and private-key pairs for both the server and the client, you can start writing their code. Let’s write a test that implements mutual TLS authentication between our echo server and a client.
+
+check `caCertPool` in `cert.go`.
+
+Both the client and server use the caCertPool function to create a new X.509 certificate pool. The function accepts the file path to a PEM-encoded certificate, which you read in and append to the new certificate pool.
+
+The certificate pool serves as a source of trusted certificates. The client puts the server’s certificate in its certificate pool, and vice versa.
+
+check `TestMutualTLSAuthentication` in `mutual_test.go`.
+
+
+Remember that in `cert.go`, you defined the IPAddresses and DNSNames slices of the template used to generate your client’s certificate. These values populate the common name and alternative names portions of the client’s certificate. You learned that Go’s TLS client uses these values to authenticate the server. But *the server does not use these values from the client’s certificate to authenticate the client*.
+
+Since you’re implementing mutual TLS authentication, you need to make some changes to the server’s certificate verification process so that it authenticates the client’s IP address or hostnames against the client certificate’s common name and alternative names.
+
+To do that, the server at the very least needs to know the client’s IP address. The only way you can get client connection information before certificate verification is by defining the tls.Config’s `GetConfigForClient` method.
+
+This method allows you to define a function that receives the *tls.ClientHelloInfo object created as part of the TLS handshake process with the client. From this, you can retrieve the client’s IP address. But first, you need to return a proper TLS configuration.
+
+Since you want to augment the usual certificate verification process on
+the server, you define an appropriate function and assign it to the TLS configuration’s `VerifyPeerCertificate` method. The server calls this method
+after the normal certificate verification checks. The only check you’re performing above and beyond the normal checks is to verify the client’s hostname with the leaf certificate’s common name and alternative names.
+
+The leaf certificate is the last certificate in the certificate chain given to
+the server by the client. The leaf certificate contains the client’s public key.
+All other certificates in the chain are intermediate certificates used to verify
+the authenticity of the leaf certificate and culminate with the certificate
+authority’s certificate. You’ll find each leaf certificate at index 0 in each
+verifiedChains slice. In other words, you can find the leaf certificate of the
+first chain at verifiedChains[0][0]. If the server calls your function assigned
+to the VerifyPeerCertificate method, the leaf certificate in the first chain
+exists at a minimum
