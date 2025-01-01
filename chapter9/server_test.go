@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -91,9 +92,41 @@ func TestSimpleHTTPServer(t *testing.T) {
 			t.Errorf("%d: expected %q; actual %q", i, c.response, b)
 		}
 
-		// Close the server.
-		if err := srv.Close(); err != nil {
-			t.Fatal(err)
-		}
 	}
+	// Close the server.
+	if err := srv.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHandlerWriteHeader(t *testing.T) {
+
+	/*
+		Calling the ResponseWriter’s
+		Write method causes Go to make an implicit call to the response’s WriteHeader
+		method with http.StatusOK for you. Once the response’s status code is set with
+		an explicit or implicit call to WriteHeader, you cannot change it.
+	*/
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("bad request"))
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "http://test", nil)
+	w := httptest.NewRecorder()
+	handler(w, r)
+
+	// The status code is 200 OK because the handler writes the response body first.
+	t.Logf("Response status: %q", w.Result().Status)
+
+	handler = func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("Bad request"))
+	}
+
+	w = httptest.NewRecorder()
+	handler(w, r)
+
+	// The status code is 400 Bad Request because the handler sets the status code first.
+	t.Logf("Response status: %q", w.Result().Status)
 }

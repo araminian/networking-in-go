@@ -72,3 +72,82 @@ go func() {
 	}
 }()
 ```
+
+## Handlers
+
+When a client sends a request to an HTTP server, the server needs to figure out what to do with it. The server may need to retrieve various resources or perform an action, depending on what the client requests. A common design pattern is to specify bits of code to handle these requests, known as handlers.
+
+In Go, handlers are objects that implement the `http.Handler` interface. They read client requests and write responses. The `http.Handler` interface consists of a single method to receive both the response and the request:
+
+```go
+type Handler interface {
+	ServeHTTP(http.ResponseWriter, *http.Request)
+}
+```
+
+We often define handlers as functions, as in this common pattern:
+
+Here, you wrap a function that accepts an `http.ResponseWriter` and an `http.Request` pointer in the `http.HandlerFunc` type, which implements the `Handler` interface.
+
+```go
+handler := http.HandlerFunc(
+    func(w http.ResponseWriter, r *http.Request) {
+    _, _ = w.Write([]byte("Hello, world!"))
+    },
+)
+```
+
+Go programmers commonly convert a function with the signature `func(w http.ResponseWriter, r *http.Request)` to the `http.HandlerFunc` type so the function implements the `http.Handler` interface.
+
+**NOTE** it’s important for the server to do the same with the request body. But unlike the Go HTTP client, closing the request body does not implicitly drain it. Granted, the `http.Server` will close the request body for you, but it won’t drain it. To make sure you can reuse the `TCP session`, I recommend you `drain the request body` at a minimum. `Closing` it is optional.
+
+### Test Your Handlers with httptest
+
+`net/http/httptest`. This package makes unit-testing handlers painless.
+
+The `net/http/httptest` package exports a NewRequest function that accepts an HTTP method, a target resource, and a request body io.Reader. It returns a pointer to an http.Request ready for use in an http.Handler:
+
+```
+func NewRequest(method, target string, body io.Reader) *http.Request
+```
+
+Unlike its `http.NewRequest` equivalent, `httptest.NewRequest` will panic instead of returning an error. This is preferable in tests but not in production code.
+
+
+The `httptest.NewRecorder` function returns a pointer to an `httptest.ResponseRecorder`, which implements the `http.ResponseWriter` interface.
+
+Although the `httptest.ResponseRecorder` exports fields that look tempting to use (I don’t want to tempt you by mentioning them), I recommend you call its `Result` method instead. The `Result` method returns a pointer to an `http.Response` object, just like the one we used in the last chapter. As the method’s name implies, it waits until the handler returns before retrieving the `httptest.ResponseRecorder`‘s results.
+
+If you’re interested in performing integration tests, the `net/http/httptest` package includes a test server implementation.
+
+```go
+func TestDefaultHandler(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	DefaultHandler().ServeHTTP(rec, req)
+
+	resp := rec.Result()
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+}
+```
+
+### How You Write the Response Matters
+
+Here’s one potential pitfall: the order in which you write to the response body and set the response status code matters. The client receives the response status code first, followed by the response body from the server.
+
+If you write the response body first, Go infers that the response status code is 200 OK and sends it along to the client before sending the response body.
+
+check `TestHandlerWriteHeader` for more details.
+
+Remember, the server sends the response status code before the response body. Once the response’s status code is set with an explicit or implicit call to `WriteHeader`, you cannot change it because it’s likely on its way to the client.
+
+This function sets the content type to text/plain, sets the status code to `400 Bad Request`, and writes the error message to the response body.
+
+```go
+func badRequestHandler(w http.ResponseWriter, r *http.Request) {
+  http.Error(w, "Bad request", http.StatusBadRequest)
+}
+```
+
+### Any Type Can Be a Handler
