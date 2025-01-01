@@ -151,3 +151,8 @@ func badRequestHandler(w http.ResponseWriter, r *http.Request) {
 ```
 
 ### Any Type Can Be a Handler
+
+Because http.Handler is an interface, you can use it to write powerful constructs for handling client requests.
+
+Let’s improve upon the `default handler`. check `DefaultMethodsHandler` for more details.
+
