@@ -52,6 +52,7 @@ func main() {
 					CurvePreferences:         []tls.CurveID{tls.CurveP256},
 					MinVersion:               tls.VersionTLS12,
 					PreferServerCipherSuites: true,
+					NextProtos:               []string{"h2"},
 				},
 			),
 		),
