@@ -9,9 +9,11 @@ import (
 	"strconv"
 	"strings"
 
-	storage "net-c12/gob"
-	homework "net-c12/homework"
+	// storage "net-c12/gob"
+	//homework "net-c12/homework"
 	// storage "net-c12/json"
+	homework "net-c12/homework/v1"
+	storage "net-c12/proto"
 )
 
 var dataFile string

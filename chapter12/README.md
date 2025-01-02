@@ -51,3 +51,23 @@ On the other hand, Gob functions much the same way as the JSON encoder, in that 
 If you are communicating with other Go services that support Gob, I recommend you use Gob over JSON. Go’s encoding/gob is more performant than encoding/json. Gob encoding is also more succinct, in that Gob uses less data to represent objects than JSON does. This can make a difference when storing or transmitting serialized data.
 
 ### Protocol Buffers
+
+Like Gob, protocol buffers use binary encoding to store or exchange information across various platforms. It’s faster and more succinct than Go’s JSON encoding. Unlike Gob and like JSON, protocol buffers are language neutral and enjoy wide support among popular programming languages.
+
+This makes them ideally suited for using in Go-based services that you hope to integrate with services written in other programming languages.
+
+Protocol buffers use a definition file, conventionally suffixed with .proto, to define messages. Messages describe the structured data you want to serialize for storage or transmission.
+
+```
+message Chore {
+bool complete = 1;
+string description = 2;
+}
+```
+
+The field’s type and number identify the field in the binary payload, so these must not change once used or you’ll break backward compatibility. However, it’s fine to add new messages and message fields to an existing `.proto` file.
+
+It’s a good practice to treat your protocol buffer definitions as you would an API. If third parties use your protocol buffer definition to communicate with your service, consider versioning your definition; this allows you to create new versions anytime you need to break backward compatibility.
+
+You’ll have to compile the .proto file to generate Go code from it. This code allows you to serialize and deserialize the messages defined in the .proto file. Third parties that want to exchange messages with you can use the same .proto file to generate code for their target programming language.
+

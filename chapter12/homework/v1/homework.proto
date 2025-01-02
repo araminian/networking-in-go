@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package homework;
+
+option go_package = "net-c12/homework/v1/homework";
+
+message Chore {
+  bool complete = 1;
+  string description = 2;
+}
+
+message Chores {
+  repeated Chore chores = 1;
+}
