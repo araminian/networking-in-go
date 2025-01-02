@@ -113,3 +113,12 @@ Checkout the `concurrent.go` file for the example, it creates a logger that writ
 
 ### Sampling Log Entries
 
+One of my warnings to you with regard to logging is to consider how it impacts your application from a CPU and I/O perspective. You don’t want logging to become your application’s bottleneck. This normally means taking special care when logging in the busy parts of your application.
+
+One method to mitigate the logging overhead in critical code paths, such as a loop, is to sample log entries. It may not be necessary to log each entry, especially if your logger is outputting many duplicate log entries. Instead, try logging every nth occurrence of a duplicate entry.
+
+Conveniently, Zap has a logger that does just that.
+
+Checkout the `sampling.go` file for the example, creates a logger that will constrain its CPU and I/O overhead by logging a subset of log entries.
+
+
