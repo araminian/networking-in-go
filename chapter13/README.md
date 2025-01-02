@@ -141,3 +141,15 @@ The `zap.AtomicLevel` struct implements the `http.Handler` interface. You can in
 
 checkout the `dynamic.go` file for the example. dynamic logging using a semaphore file.
 
+### Scaling Up with Wide Event Logging
+
+Wide event logging is a technique that creates `a single, structured log entry per event to summarize the transaction, instead of logging numerous entries as the transaction progresses.`
+
+This technique is most applicable to requestresponse loops, such as API calls, but it can be adapted to other use cases.
+
+When you summarize transactions in a structured log entry, you reduce the logging overhead while conserving the ability to index and search for transaction details.
+
+One approach to wide event logging is to wrap an API handler in middleware. But first, since the `http.ResponseWriter` is a bit stingy with its output,
+you need to create your own response writer type to collect and log the response code and length.
+
+checkout the `wide.go` file for the example.
