@@ -71,3 +71,33 @@ It’s a good practice to treat your protocol buffer definitions as you would an
 
 You’ll have to compile the .proto file to generate Go code from it. This code allows you to serialize and deserialize the messages defined in the .proto file. Third parties that want to exchange messages with you can use the same .proto file to generate code for their target programming language.
 
+## Transmitting Serialized Objects
+
+Large technology companies facilitate this with remote procedure calls (RPCs), a technique by which a client can transparently call a subroutine on a server as if the call were local.
+
+From your application’s perspective, RPC services take code that appears to run locally and distribute it over a network. Your code may call a function that transparently relays a message to a server. The server would locally execute the function, then respond with the results, which your code receives as the function’s return value.
+
+As far as your code is concerned, the function call is local, despite RPC’s transparent interaction with the server. This approach allows you to scale services across servers while abstracting the details away from your code. In other words, your code functions the same no matter whether the function call runs on the same computer or on one over the network.
+
+Most companies now implement RPC with gRPC, a cross-platform framework that leverages HTTP/2 and protocol buffers. Let’s use it here to build something more sophisticated than an app to keep track of the housework you have yet to do. You’ll write a service that can send tasks to Rosie, the robotic maid from the classic animated series The Jetsons, who can take over your domestic responsibilities. Granted, she won’t be available until the year 2062, but you can get a head start on the code.
+
+### Connecting Services with gRPC
+
+The gRPC framework is a collection of libraries that abstracts many of the RPC implementation details. It is platform neutral and programminglanguage agnostic; you can use it to integrate a Go service running on Windows with a Rust service running on Linux, for example.
+
+### Creating a TLS-Enabled gRPC Server
+
+Now let’s implement a gRPC client and server. By default, gRPC requires a secure connection, so you’ll add TLS support to your server.
+
+We need to implement the `RobotMaid` service in the `homework/v1/homework.proto` file.
+
+```go
+type RobotMaidServer interface {
+Add(context.Context, *Chores) (*Response, error)
+Complete(context.Context, *CompleteRequest) (*Response, error)
+List(context.Context, *empty.Empty) (*Chores, error)
+mustEmbedUnimplementedRobotMaidServer()
+}
+```
+
+We need to implement the `RobotMaidServer` interface in the `robot.go` file.
