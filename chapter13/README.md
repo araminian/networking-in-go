@@ -121,4 +121,23 @@ Conveniently, Zap has a logger that does just that.
 
 Checkout the `sampling.go` file for the example, creates a logger that will constrain its CPU and I/O overhead by logging a subset of log entries.
 
+### Performing On-Demand Debug Logging
+
+If debug logging introduces an unacceptable burden on your application
+under normal operation, or if the sheer amount of debug log data overwhelms your available storage space, you might want the ability to enable debug logging on demand.
+
+One technique is to use a semaphore file to enable debug logging. A semaphore file is an empty file whose existence is meant as a signal to the logger to change its behavior. If the semaphore file is present, the logger outputs debug-level logs. Once you remove the semaphore file, the logger reverts to its previous log level.
+
+Let’s use the `fsnotify` package to allow your application to watch for filesystem notifications. In addition to the standard library, the `fsnotify` package uses the `x/sys` package. Before you start writing code, let’s make sure
+our `x/sys` package is current:
+
+```bash
+go get -u golang.org/x/sys
+```
+
+Not all logging packages provide safe methods to asynchronously modify log levels. Be aware that you may introduce a race condition if you attempt to modify a logger’s level at the same time that the logger is reading the log level. The Zap logger allows you to retrieve a sync/atomic-based leveler to dynamically modify a logger’s level while avoiding race conditions. You’ll pass the atomic leveler to the zapcore.NewCore function in place of a log level, as you’ve previously done.
+
+The `zap.AtomicLevel` struct implements the `http.Handler` interface. You can integrate it into an API and dynamically change the log level over HTTP instead of using a semaphore.
+
+checkout the `dynamic.go` file for the example. dynamic logging using a semaphore file.
 
