@@ -162,3 +162,47 @@ The downside to using a third-party application to manage log files is that the 
 A less invasive and more reliable option is to add log file management directly to your logger by using a library like Lumberjack. Lumberjack handles log rotation in a way that is transparent to the logger, because your logger treats Lumberjack as any other io.Writer. Meanwhile, Lumberjack keeps track of the log entry accounting and file rotation for you.
 
 checkout `rotation.go` file for the example.
+
+## Instrumenting Your Code
+
+Instrumenting your code is the process of collecting metrics for the purpose
+of making inferences about the current state of your service—such as the duration of each request-response loop, the size of each response, the number of connected clients, the latency between your service and a third-party API, and so on. Whereas logs provide a record of how your service got into a certain state, metrics give you insight into that state itself.
+
+Instrumentation is easy, so much so that I’m going to give you the opposite advice I did for logging: instrument everything (initially). Fine-grained instrumentation involves hardly any overhead, it’s efficient to ship, and it’s inexpensive to store. Plus, instrumentation can solve one of the challenges of logging I mentioned earlier: that you won’t initially know all the questions you’ll want to ask, particularly for complex systems. An insidious problem may be ready to ruin your weekend because you lack critical metrics to give you an early warning that something is wrong.
+
+This section will introduce you to metric types and show you the basics for using those types in your services. You will learn about Go kit’s metrics package, which is an abstraction layer that provides useful interfaces for popular metrics platforms. 
+
+### Counters
+
+Counters are used for tracking values that only increase, such as request
+counts, error counts, or completed task counts. You can use a counter to
+calculate the rate of increase for a given interval, such as the number of
+connections per minute.
+
+### Gauges
+
+Gauges allow you to track values that increase or decrease, such as the current memory usage, in-flight requests, queue sizes, fan speed, or the number of ThinkPads on my desk. Gauges do not support rate calculations, such as the number of connections per minute or megabits transferred per second, while counters do.
+
+### Histograms and Summaries
+
+A histogram places values into predefined buckets. Each bucket is associated with a range of values and named after its maximum one. When a value is observed, the histogram increments the maximum value of the smallest bucket into which the value fits. In this way, a histogram tracks the frequency of observed values for each bucket.
+
+Let’s look at a quick example. Assuming you have three buckets valued at 0.5, 1.0, and 1.5, if a histogram observes the value 0.42, it will increment the counter associated with bucket 0.5, because 0.5 is the smallest bucket that can contain 0.42. It covers the range of 0.5 and smaller values. If the histogram observes the value 1.23, it will increment the counter associated with the bucket 1.5, which covers values in the range of above 1.0 through 1.5. Naturally, the 1.0 bucket covers the range of above 0.5 through 1.0.
+
+You can use a histogram’s distribution of observed values to estimate a percentage or an average of all values. For example, you could use a histogram to calculate the average request sizes or response sizes observed by your service.
+
+A summary is a histogram with a few differences. First, a histogram requires predefined buckets, whereas a summary calculates its own buckets. Second, the metrics server calculates averages or percentages from histograms, whereas your service calculates the averages or percentages from summaries. As a result, you can aggregate histograms across services on the metrics server, but you cannot do the same for summaries.
+
+The general advice is to use summaries when you don’t know the range
+of expected values, but I’d advise you to use histograms whenever possible
+so that you can aggregate histograms on the metrics server.
+
+### Instrumenting a Basic HTTP Server
+
+The biggest challenges here are determining what you want to instrument, where best to instrument it, and what metric type is most appropriate for each value you want to track.
+
+`server.go` details the initial code needed for an application that comprises an HTTP server to serve the metrics endpoint and another HTTP server to pass all requests to an instrumented handler.
+
+The `promhttp` package includes an `http.Handler` that a Prometheus server can use to scrape metrics from your application. This handler serves not only your metrics but also metrics related to the runtime, such as the Go version, number of cores, and so on. At a minimum, you can use the metrics provided by the Prometheus handler to gain insight into your service’s memory utilization, open file descriptors, heap and stack details, and more.
+
+
