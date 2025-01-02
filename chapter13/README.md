@@ -153,3 +153,12 @@ One approach to wide event logging is to wrap an API handler in middleware. But 
 you need to create your own response writer type to collect and log the response code and length.
 
 checkout the `wide.go` file for the example.
+
+### Log Rotation with Lumberjack
+
+If you elect to output log entries to a file, you could leverage an application like logrotate to keep them from consuming all available hard drive space.
+The downside to using a third-party application to manage log files is that the third-party application will need to signal to your application to reopen its log file handle lest your application keep writing to the rotated log file.
+
+A less invasive and more reliable option is to add log file management directly to your logger by using a library like Lumberjack. Lumberjack handles log rotation in a way that is transparent to the logger, because your logger treats Lumberjack as any other io.Writer. Meanwhile, Lumberjack keeps track of the log entry accounting and file rotation for you.
+
+checkout `rotation.go` file for the example.
