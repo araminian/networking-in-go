@@ -100,4 +100,12 @@ mustEmbedUnimplementedRobotMaidServer()
 }
 ```
 
-We need to implement the `RobotMaidServer` interface in the `robot.go` file.
+We need to implement the `RobotMaidServer` interface in the `server/robot.go` file.
+
+
+### Creating a gRPC Client to Test the Server
+
+The client-side code isn’t much different from what you wrote in the “Serializing Objects” section on page 270. The main difference is that you need to instantiate a new gRPC client and modify the add, complete, and list functions to use it.
+
+check out the `client/client.go` file for the client-side code.
+
