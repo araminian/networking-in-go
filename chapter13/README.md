@@ -103,3 +103,13 @@ The `encoder` will use your configuration to dictate its output format.
 Let’s instead assume you want to log something a bit more humanreadable, yet that has structure. Zap includes a console encoder that’s essentially a drop-in replacement for its JSON encoder. 
 
 Checkout the `console.go` file for the example.
+
+
+### Logging with Different Outputs and Encodings
+
+Zap includes useful functions that allow you to **concurrently log to different outputs, using different encodings, at different log levels.**
+
+Checkout the `concurrent.go` file for the example, it creates a logger that writes JSON to a log file and console encoding to standard output. The logger writes only the debug log entries to the console.
+
+### Sampling Log Entries
+
